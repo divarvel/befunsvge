@@ -20,7 +20,30 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/githubuser/befunsvge#readme>
 
 dependencies:
-- base >= 4.7 && < 5
+- base-noprelude >= 4.7 && < 5
+- containers
+- random
+- relude
+- text
+
+default-extensions:
+ - DeriveAnyClass
+ - DeriveGeneric
+ - DerivingStrategies
+ - FlexibleContexts
+ - FlexibleInstances
+ - FunctionalDependencies
+ - GeneralizedNewtypeDeriving
+ - LambdaCase
+ - MultiParamTypeClasses
+ - NamedFieldPuns
+ - OverloadedLabels
+ - OverloadedStrings
+ - RecordWildCards
+ - ScopedTypeVariables
+ - TypeApplications
+ - TypeFamilies
+ - UndecidableInstances
 
 library:
   source-dirs: src
