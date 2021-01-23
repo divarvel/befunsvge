@@ -1,13 +1,18 @@
 module State where
 
-import           Data.Char       (isDigit)
-import           Data.Foldable   (maximum)
-import           Data.Map.Strict (findWithDefault, insert, (!?))
-import           Data.Set        (member, singleton)
-import qualified Data.Text       as T
-import           Numeric.Natural (Natural)
-import           System.IO       (hPutStrLn, stderr)
-import           System.Random   (StdGen, getStdGen, random)
+import           Data.Char            (isDigit)
+import           Data.Foldable        (maximum)
+import           Data.Map.Strict      (findWithDefault, insert, (!?))
+import           Data.Set             (member, singleton)
+import qualified Data.Text            as T
+import           GHC.Float
+import           Numeric.Natural      (Natural)
+import           Numeric.Noise.Perlin
+import           System.IO            (hPutStrLn, stderr)
+import           System.Random        (StdGen, getStdGen, mkStdGen, random,
+                                       randomIO)
+
+import           Config
 
 type Position = (Natural, Natural)
 
@@ -38,8 +43,8 @@ data BState
   , iterations  :: Natural
   , mode        :: Mode
   , randGen     :: StdGen
+  , input       :: (Int, Int, Int) -> Int
   }
-  deriving stock (Show)
 
 move :: Delta -> BState -> BState
 move d s@BState{pointer=(_, p)} = s { pointer = (d, p) }
@@ -207,15 +212,22 @@ handle c = case c of
   'W'   -> popPathCommand "V" 1
   'w'   -> popPathCommand "v" 1
   'π'                 -> flushPath
-  -- control flow
+  -- input
+  'i'   -> getInput
   n | isDigit n       -> push (fromMaybe 0 $ readMaybe [n])
   _                   -> id
 
+getInput :: BState -> BState
+getInput s@BState{stack,input} = case stack of
+  z:y:x:xs -> s { stack = input (x,y,z) : xs }
+  _        -> stackErr 3 s
+
 run :: Maybe Natural
+    -> ((Int, Int, Int) -> Int)
     -> StdGen
     -> Board
     -> BState
-run maxIter randGen board@Board{grid} =
+run maxIter input randGen board@Board{grid} =
   let position = (0,0)
       delta = (1,0)
       pointer = (delta, position)
@@ -363,14 +375,25 @@ dummyBoard' =
 toNatural :: Integral a => a -> Natural
 toNatural = fromInteger . toInteger
 
-render :: Maybe Natural
+getInputFunc :: Int -> Source -> ((Int, Int, Int) -> Int)
+getInputFunc seed (Perlin PerlinConfig{..}) =
+  let noise = perlin seed octaves scale persistence
+      rescale = double2Int . (* amp)
+   in \(x,y,z) ->
+       let p = traceShowId (int2Double x, int2Double y, int2Double z)
+        in rescale $ traceShowId $ noiseValue noise p
+getInputFunc _ Dummy = const 0
+
+render :: Config
        -> Board
        -> IO ()
-render maxIter b = do
-  randGen <- getStdGen
-  let result@BState{output} = run maxIter randGen b
+render Config{..} b = do
+  seed' <- maybe randomIO pure seed
+  let getInput = getInputFunc seed' $ either (error . T.pack) id $ parseSource (maybe "dummy" id source)
+  let randGen = mkStdGen seed'
+  let result@BState{output} = run maxIter getInput randGen b
   putStrLn "<body>"
-  putStrLn "<svg width=\"200px\" height=\"200px\" fill=\"none\" stroke=\"black\">"
+  putStrLn $ "<svg width=\"" <> show width <> "px\" height=\"" <> show height <> "px\" fill=\"none\" stroke=\"black\">"
   putStrLn (T.unpack output)
   putStrLn "</svg>"
   putStrLn "</body>"

@@ -25,7 +25,9 @@ source-repository head
 
 library
   exposed-modules:
+      Config
       Lib
+      Perlin
       Prelude
       State
   other-modules:
@@ -36,6 +38,9 @@ library
   build-depends:
       base-noprelude >=4.7 && <5
     , containers
+    , hsnoise
+    , optparse-applicative
+    , optparse-generic
     , random
     , relude
     , text
@@ -53,6 +58,9 @@ executable befunsvge-exe
       base-noprelude >=4.7 && <5
     , befunsvge
     , containers
+    , hsnoise
+    , optparse-applicative
+    , optparse-generic
     , random
     , relude
     , text
@@ -71,6 +79,9 @@ test-suite befunsvge-test
       base-noprelude >=4.7 && <5
     , befunsvge
     , containers
+    , hsnoise
+    , optparse-applicative
+    , optparse-generic
     , random
     , relude
     , text
