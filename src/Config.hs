@@ -42,7 +42,7 @@ parsePerlin _ = Left "Incorrect number of params"
 parseSource :: Text -> Either String Source
 parseSource input =
   let things = splitOn ":" input
-   in traceShowId $ case things of
+   in case things of
        "perlin" : values -> Perlin <$> parsePerlin values
        ["dummy"]         -> pure Dummy
        _                 -> Left "Unknown source"

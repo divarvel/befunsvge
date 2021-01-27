@@ -6,11 +6,9 @@ import           Data.Map.Strict      (findWithDefault, insert, (!?))
 import           Data.Set             (member, singleton)
 import qualified Data.Text            as T
 import           GHC.Float
-import           Numeric.Natural      (Natural)
 import           Numeric.Noise.Perlin
-import           System.IO            (hPutStrLn, stderr)
-import           System.Random        (StdGen, getStdGen, mkStdGen, random,
-                                       randomIO)
+import           System.IO            (hPutStrLn)
+import           System.Random        (StdGen, mkStdGen, random, randomIO)
 
 import           Config
 
@@ -56,6 +54,7 @@ jump s@BState{pointer=(d,p)}=
              (0, -1) -> (0,-2)
              (1,  0) -> (2,0)
              (-1, 0) -> (-2,0)
+             _       -> d
    in s { pointer = (d', p) }
 
 stop :: BState -> BState
@@ -89,7 +88,7 @@ cond :: Delta -> Delta
      -> BState -> BState
 cond ifNZ ifZ s@BState{stack} = case stack of
   0:xs -> move ifZ $ s { stack = xs }
-  x:xs -> move ifNZ $ s { stack = xs }
+  _:xs -> move ifNZ $ s { stack = xs }
   _    -> stackErr 1 s
 
 comp :: BState -> BState
@@ -101,7 +100,7 @@ comp s@BState{stack} = case stack of
 nnot :: BState -> BState
 nnot s@BState{stack} = case stack of
   0:xs -> s { stack = 1 : xs }
-  x:xs -> s { stack = 0 : xs }
+  _:xs -> s { stack = 0 : xs }
   _    -> stackErr 1 s
 
 randomMove :: BState -> BState
@@ -236,9 +235,9 @@ run maxIter input randGen board@Board{grid} =
       stack = []
       currentPath = ""
       output = ""
-      state = BState{ .. }
+      bstate = BState{ .. }
       c = grid !? position
-   in runStep (fromMaybe 1000000 maxIter) c state
+   in runStep (fromMaybe 1000000 maxIter) c bstate
 
 stateData :: BState -> ([Int], Pointer)
 stateData BState{..} = (stack, pointer)
@@ -254,6 +253,7 @@ renderState c BState{..} =
         (0, 2)  -> '⇩'
         (0, -1) -> '↑'
         (0, -2) -> '⇧'
+        _       -> '?'
       gridWithPointer = insert (snd pointer) pChar (grid board)
     in unlines
          [ "------------------------------------------"
@@ -288,7 +288,7 @@ runStep maxIter c s =
          let handled = handled' -- trace (T.unpack $ renderState c handled') handled'
              iterated@BState{mode, pointer, board} = incIterations maxIter handled
              newPos  = next pointer board mode
-             continue (p, c) = runStep maxIter (Just c) (iterated { pointer = pointer $> p })
+             continue (p, c') = runStep maxIter (Just c') (iterated { pointer = pointer $> p })
           in maybe (err "Infinite loop" s) continue newPos
   in case (mode s, c) of
        (Normal, _)             -> go $ maybe s (`handle` s) c
@@ -301,11 +301,10 @@ next :: Pointer -> Board -> Mode -> Maybe (Position, Char)
 next p = next' (singleton p) p
 
 next' :: Set Pointer -> Pointer -> Board -> Mode -> Maybe (Position, Char)
-next' _ p@(direction, (x,y)) b@Board{..} StringInput =
+next' _ p Board{..} StringInput =
   let (x', y') = uncurry nextPos p size
-      p' = p $> (x',y')
    in Just ((x', y'), findWithDefault ' ' (x', y') grid)
-next' visited p@(direction, (x,y)) b@Board{..} m =
+next' visited p b@Board{..} m =
   let (x', y') = uncurry nextPos p size
       p' = p $> (x',y')
    in if p' `member` visited
@@ -318,11 +317,11 @@ nextPos :: Delta -> Position -> Position -> Position
 nextPos (dx, dy) (x, y) (mx, my) =
   let (ix, iy) = (toInteger x, toInteger y)
       (x',y') = (ix + toInteger dx, iy + toInteger dy)
-      clamp m v  | v < 0     = m - 1
-                 | v >= toInteger m    = 0
-                 | otherwise = fromInteger v
-   in ( clamp mx x'
-      , clamp my y'
+      clamp' m v  | v < 0     = m - 1
+                  | v >= toInteger m    = 0
+                  | otherwise = fromInteger v
+   in ( clamp' mx x'
+      , clamp' my y'
       )
 
 popTag :: Text
@@ -378,7 +377,7 @@ toNatural = fromInteger . toInteger
 getInputFunc :: Int -> Source -> ((Int, Int, Int) -> Int)
 getInputFunc seed (Perlin PerlinConfig{..}) =
   let noise = perlin seed octaves scale persistence
-      rescale v = double2Int $ (* amp) $ v
+      rescale = double2Int . (* amp)
    in \(x,y,z) ->
        let p = (int2Double x, int2Double y, int2Double z)
         in rescale $ noiseValue noise p
@@ -390,9 +389,9 @@ render :: Config
 render Config{..} b = do
   let source' = either (error . T.pack) id $ parseSource (maybe "dummy" id source)
   seed' <- maybe randomIO pure seed
-  let getInput = getInputFunc seed' source'
+  let getInput' = getInputFunc seed' source'
   let randGen = mkStdGen seed'
-  let result@BState{output} = run maxIter getInput randGen b
+  let result@BState{output} = run maxIter getInput' randGen b
   hPutStrLn stderr $ toString $ renderState Nothing result
   putStrLn "<body>"
   putStrLn $ "<svg width=\"" <> show width <> "px\" height=\"" <> show height <> "px\" fill=\"none\" stroke=\"black\">"

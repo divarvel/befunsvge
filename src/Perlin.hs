@@ -1,6 +1,5 @@
 module Perlin where
 
-import qualified Data.Text            as T
 import           GHC.Float
 import           Numeric.Noise.Perlin
 import           System.Random
@@ -11,7 +10,7 @@ import           Svg
 getPerlin :: Config -> IO (Perlin, Double)
 getPerlin Config{..} = do
   seed' <- maybe randomIO pure seed
-  let (Perlin PerlinConfig{..}) = either (error . toText) id $ parseSource $ maybe undefined id source
+  let (Perlin PerlinConfig{..}) = either (error . toText) id $ parseSource $ maybe (error "Perlin source required") id source
       noise = perlin seed' octaves scale persistence
   pure (noise, amp)
 
@@ -36,6 +35,7 @@ line2Path (p:ps) =
   let s c (x,y) = c <> " " <> show x <> " " <> show y <> " "
       d = s "M" p <> foldMap (s "L") ps
    in "<path d=\"" <> d <> "\" />"
+line2Path _ = error "empty point list"
 
 render' :: Int -> Config -> IO ()
 render' step c = do
