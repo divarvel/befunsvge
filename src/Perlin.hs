@@ -10,7 +10,7 @@ import           Svg
 getPerlin :: Config -> IO (Perlin, Double)
 getPerlin Config{..} = do
   seed' <- maybe randomIO pure seed
-  let (Perlin PerlinConfig{..}) = either (error . toText) id $ parseSource $ maybe (error "Perlin source required") id source
+  let (Perlin PerlinConfig{..}) = fromMaybe Dummy source
       noise = perlin seed' octaves scale persistence
   pure (noise, amp)
 

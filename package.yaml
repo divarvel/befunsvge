@@ -21,6 +21,8 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base-noprelude >= 4.7 && < 5
+- aeson
+- base64-bytestring
 - containers
 - hsnoise
 - optparse-applicative
@@ -71,6 +73,24 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - befunsvge
+
+  befunsvge-server:
+    main:                Main.hs
+    source-dirs:         server
+    ghc-options:
+    - -Wall
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -with-rtsopts=-T
+    dependencies:
+    - befunsvge
+    - http-api-data
+    - lucid
+    - servant
+    - servant-lucid
+    - servant-server
+    - warp
 
 tests:
   befunsvge-test:

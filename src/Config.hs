@@ -1,20 +1,22 @@
 module Config where
 
-import           Data.Text       (splitOn, unpack)
+import           Data.Aeson          (FromJSON, ToJSON)
+import           Data.Text           (pack, splitOn, unpack)
+import           Options.Applicative
 import           Options.Generic
 
 data Config
   = Config
-  { width    :: Int
-  , height   :: Int
-  , source   :: Maybe Text
-  , fileName :: String
-  , maxIter  :: Maybe Natural
-  , seed     :: Maybe Int
-  -- todo remove
-  , step     :: Maybe Int
+  { width   :: Int
+  , height  :: Int
+  , source  :: Maybe Source
+  , maxIter :: Maybe Natural
+  , seed    :: Maybe Int
   }
-  deriving (Generic, ParseRecord)
+  deriving (Generic, ParseRecord, FromJSON, ToJSON)
+
+instance ParseField Source where
+  readField = eitherReader (parseSource . pack)
 
 data PerlinConfig
   = PerlinConfig
@@ -23,12 +25,12 @@ data PerlinConfig
   , persistence :: Double
   , amp         :: Double
   }
-  deriving stock Show
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 data Source
   = Perlin PerlinConfig
   | Dummy
-  deriving stock Show
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 parsePerlin :: [Text] -> Either String PerlinConfig
 parsePerlin [o, s, p, a] = maybeToRight "parseError" $ do

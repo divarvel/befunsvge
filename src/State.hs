@@ -1,10 +1,12 @@
 module State where
 
+import           Data.Aeson           (FromJSON (..), ToJSON (..))
 import           Data.Char            (isDigit)
 import           Data.Foldable        (maximum)
 import           Data.Map.Strict      (findWithDefault, insert, (!?))
 import           Data.Set             (member, singleton)
 import qualified Data.Text            as T
+--import           Data.Text.Encoding.Base64.URL (decodeBase64, encodeBase64)
 import           GHC.Float
 import           Numeric.Noise.Perlin
 import           System.IO            (hPutStrLn)
@@ -26,10 +28,18 @@ data Board
   { size :: Position
   , grid :: Map Position Char
   }
-  deriving stock (Eq, Show)
+  deriving (Generic, Eq, Show, FromJSON, ToJSON)
 
 instance IsString Board where
   fromString = readBoard . T.pack
+
+{-
+instance FromJSON Board where
+  parseJSON = withText "board" (either (fail . toString) (pure . readBoard) . decodeBase64)
+
+instance ToJSON Board where
+  toJSON Board{..} = String $ encodeBase64 $ renderGrid grid size
+  -}
 
 data BState
   = BState
@@ -42,6 +52,7 @@ data BState
   , mode        :: Mode
   , randGen     :: StdGen
   , input       :: (Int, Int, Int) -> Int
+  , seed        :: Int
   }
 
 move :: Delta -> BState -> BState
@@ -223,10 +234,10 @@ getInput s@BState{stack,input} = case stack of
 
 run :: Maybe Natural
     -> ((Int, Int, Int) -> Int)
-    -> StdGen
+    -> (Int, StdGen)
     -> Board
     -> BState
-run maxIter input randGen board@Board{grid} =
+run maxIter input (seed, randGen) board@Board{grid} =
   let position = (0,0)
       delta = (1,0)
       pointer = (delta, position)
@@ -263,10 +274,15 @@ renderState c BState{..} =
          , "Path: " <> show currentPath
          , "Mode: " <> show mode
          , "Output: " <> output
+         , "Pointer: " <> show pointer
          , "Board: "
+         , renderGrid (grid board) (size board)
          , renderGrid gridWithPointer (size board)
          ]
 
+renderBoard :: Board
+            -> Text
+renderBoard Board{..} = renderGrid grid size
 
 renderGrid :: Map Position Char
            -> (Natural, Natural)
@@ -383,15 +399,21 @@ getInputFunc seed (Perlin PerlinConfig{..}) =
         in rescale $ noiseValue noise p
 getInputFunc _ Dummy = const 0
 
-render :: Config
-       -> Board
-       -> IO ()
-render Config{..} b = do
-  let source' = either (error . T.pack) id $ parseSource (maybe "dummy" id source)
+compute :: Config
+        -> Board
+        -> IO BState
+compute Config{..} b = do
+  let source' = fromMaybe Dummy source
   seed' <- maybe randomIO pure seed
   let getInput' = getInputFunc seed' source'
   let randGen = mkStdGen seed'
-  let result@BState{output} = run maxIter getInput' randGen b
+  pure $ run maxIter getInput' (seed', randGen) b
+
+render :: Config
+       -> Board
+       -> IO ()
+render c@Config{..} b = do
+  result@BState{output} <- compute c b
   hPutStrLn stderr $ toString $ renderState Nothing result
   putStrLn "<body>"
   putStrLn $ "<svg width=\"" <> show width <> "px\" height=\"" <> show height <> "px\" fill=\"none\" stroke=\"black\">"

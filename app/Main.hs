@@ -4,12 +4,12 @@ import           Config
 import           Perlin
 import           State
 
-import qualified Data.Text          as T
+import qualified Data.Text.IO       as T
 import           Options.Generic
 import           System.Environment
 
 main :: IO ()
 main = do
   c@Config{..} <- getRecord "Config"
-  pgm <- T.pack <$> readFile fileName
+  pgm <- T.getContents
   render c $ readBoard pgm
