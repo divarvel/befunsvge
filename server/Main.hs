@@ -112,7 +112,7 @@ renderResult RenderingRequest{..} BState{..} = html_ $
          ]
          $ toHtmlRaw output
     p_ $ "Seed " <> show seed
-    renderForm config program
+    renderForm config { seed = Just seed } program
 
 renderForm :: Config -> Board -> MainPage
 renderForm Config{..} b = do
@@ -145,7 +145,7 @@ renderForm Config{..} b = do
     br_ []
     p_ "Perlin seed (0 for random)"
     input_ [ value_ (maybe "0" show seed)
-           , name_ "seed"
+           , name_ "_seed"
            ]
     br_ []
     p_ "Perlin octaves"
