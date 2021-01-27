@@ -238,7 +238,7 @@ run maxIter input randGen board@Board{grid} =
       output = ""
       state = BState{ .. }
       c = grid !? position
-   in runStep (fromMaybe 10000 maxIter) c state
+   in runStep (fromMaybe 1000000 maxIter) c state
 
 stateData :: BState -> ([Int], Pointer)
 stateData BState{..} = (stack, pointer)
@@ -285,7 +285,7 @@ incIterations maxIter s@BState{iterations} =
 runStep :: Natural -> Maybe Char -> BState -> BState
 runStep maxIter c s =
   let go handled' =
-         let handled = trace (T.unpack $ renderState c handled') handled'
+         let handled = handled' -- trace (T.unpack $ renderState c handled') handled'
              iterated@BState{mode, pointer, board} = incIterations maxIter handled
              newPos  = next pointer board mode
              continue (p, c) = runStep maxIter (Just c) (iterated { pointer = pointer $> p })
@@ -378,20 +378,22 @@ toNatural = fromInteger . toInteger
 getInputFunc :: Int -> Source -> ((Int, Int, Int) -> Int)
 getInputFunc seed (Perlin PerlinConfig{..}) =
   let noise = perlin seed octaves scale persistence
-      rescale = double2Int . (* amp)
+      rescale v = double2Int $ (* amp) $ v
    in \(x,y,z) ->
-       let p = traceShowId (int2Double x, int2Double y, int2Double z)
-        in rescale $ traceShowId $ noiseValue noise p
+       let p = (int2Double x, int2Double y, int2Double z)
+        in rescale $ noiseValue noise p
 getInputFunc _ Dummy = const 0
 
 render :: Config
        -> Board
        -> IO ()
 render Config{..} b = do
+  let source' = either (error . T.pack) id $ parseSource (maybe "dummy" id source)
   seed' <- maybe randomIO pure seed
-  let getInput = getInputFunc seed' $ either (error . T.pack) id $ parseSource (maybe "dummy" id source)
+  let getInput = getInputFunc seed' source'
   let randGen = mkStdGen seed'
   let result@BState{output} = run maxIter getInput randGen b
+  hPutStrLn stderr $ toString $ renderState Nothing result
   putStrLn "<body>"
   putStrLn $ "<svg width=\"" <> show width <> "px\" height=\"" <> show height <> "px\" fill=\"none\" stroke=\"black\">"
   putStrLn (T.unpack output)
