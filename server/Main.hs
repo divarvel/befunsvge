@@ -9,6 +9,7 @@ import           Config
 import           Data.Aeson                 (FromJSON, ToJSON, eitherDecode,
                                              encode)
 import qualified Data.ByteString.Base64.URL as B64
+import qualified Data.Text                  as T
 import           Lucid
 import           Lucid.Base
 import           Network.Wai.Handler.Warp   (runEnv)
@@ -78,7 +79,7 @@ postHandler RenderingRequestForm{..} = do
                      , seed = mfilter (== 0) $ Just _seed
                      , ..
                      }
-      req = RenderingRequest{ program = readBoard _program
+      req = RenderingRequest{ program = readBoard $ T.replace "\r\n" "\n" _program
                             , ..
                             }
   redirectTo req
@@ -126,7 +127,10 @@ renderForm Config{..} b = do
   form_ [ method_ "POST"
         , action_ "?"
         ] $ do
-    textarea_ [ name_ "_program" ] $ toHtmlRaw (renderBoard b)
+    textarea_ [ name_ "_program"
+              , rows_ (show . max 5 . snd $ size b)
+              , cols_ (show . max 20 . fst $ size b)
+              ] $ toHtml (renderBoard b)
     br_ []
     p_ "Height (px)"
     input_ [ value_ (show height)
