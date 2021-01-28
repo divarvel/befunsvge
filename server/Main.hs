@@ -76,7 +76,7 @@ postHandler :: RenderingRequestForm -> Handler NoContent
 postHandler RenderingRequestForm{..} = do
   let source = Just $ Perlin $ PerlinConfig{..}
   let config = Config{ maxIter = Just (min maxIter 1000000)
-                     , seed = mfilter (== 0) $ Just _seed
+                     , seed = mfilter (/= 0) $ Just _seed
                      , ..
                      }
       req = RenderingRequest{ program = readBoard $ T.replace "\r\n" "\n" _program
