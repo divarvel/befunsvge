@@ -114,8 +114,12 @@ renderResult RenderingRequest{..} BState{..} = html_ $
            , makeAttribute "fill" "none"
            , makeAttribute "stroke" "black"
            , style_ "border: 1px solid black;"
-           ] $ toHtmlRaw output
-      pre_ $ toHtml output
+           ] $ toHtmlRaw svgOutput
+      div_ $ do
+        h2_ "Text output"
+        pre_ $ toHtml textOutput
+        h2_ "SVG output"
+        pre_ $ toHtml svgOutput
     div_ [ style_ "display: flex; justify-content: space-around; width: 100%;"] $ do
       div_ [style_ "max-width: 50%;" ] $ do
         renderForm config { seed = Just seed } program

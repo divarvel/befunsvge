@@ -47,7 +47,8 @@ data BState
   = BState
   { stack       :: [Int]
   , currentPath :: Text
-  , output      :: Text
+  , svgOutput   :: Text
+  , textOutput  :: Text
   , board       :: Board
   , pointer     :: Pointer
   , iterations  :: Natural
@@ -161,15 +162,15 @@ toggleStringMode s@BState{mode} = case mode of
   _           -> s
 
 popChar :: BState -> BState
-popChar s@BState{output,stack} = case stack of
-  c:xs -> s { output = output <> one (chr c)
+popChar s@BState{textOutput,stack} = case stack of
+  c:xs -> s { textOutput = textOutput <> one (chr c)
             , stack = xs
             }
   _ -> stackErr 1 s
 
 popNumber :: BState -> BState
-popNumber s@BState{output,stack} = case stack of
-  n:xs -> s { output = output <> show n
+popNumber s@BState{textOutput,stack} = case stack of
+  n:xs -> s { textOutput = textOutput <> show n
             , stack = xs
             }
   _ -> stackErr 1 s
@@ -251,7 +252,8 @@ run maxIter input (seed, randGen) board@Board{grid} =
       mode = Normal
       stack = []
       currentPath = ""
-      output = ""
+      textOutput = ""
+      svgOutput = ""
       bstate = BState{ .. }
       c = grid !? position
    in runStep (fromMaybe 1000000 maxIter) c bstate
@@ -279,7 +281,8 @@ renderState c BState{..} =
          , "Stack: " <> show stack
          , "Path: " <> show currentPath
          , "Mode: " <> show mode
-         , "Output: " <> output
+         , "Text Output: " <> textOutput
+         , "SVG Output: " <> svgOutput
          , "Pointer: " <> show pointer
          , "Board: "
          , renderGrid (grid board) (size board)
@@ -349,11 +352,11 @@ nextPos (dx, dy) (x, y) (mx, my) =
 popTag :: Text
        -> [Text]
        -> BState -> BState
-popTag name attrs s@BState{stack, output} =
+popTag name attrs s@BState{stack, svgOutput} =
   let pairs = fmap show <$> zip attrs stack
    in if length pairs == length attrs
       then s { stack = drop (length pairs) stack
-             , output = output <> outputTag name pairs
+             , svgOutput = svgOutput <> outputTag name pairs
              }
       else stackErr (length attrs) s
 
@@ -375,9 +378,9 @@ popPathCommand name argc s@BState{stack,currentPath} =
          }
 
 flushPath :: BState -> BState
-flushPath s@BState{currentPath,output} =
+flushPath s@BState{currentPath,svgOutput} =
   let tag = outputTag "path" [("d", currentPath)]
-   in s { output = output <> tag
+   in s { svgOutput = svgOutput <> tag
         , currentPath = ""
         }
 
@@ -419,11 +422,12 @@ render :: Config
        -> Board
        -> IO ()
 render c@Config{..} b = do
-  result@BState{output} <- compute c b
+  result@BState{textOutput, svgOutput} <- compute c b
   hPutStrLn stderr $ toString $ renderState Nothing result
+  hPutStrLn stderr $ toString textOutput
   putStrLn "<body>"
   putStrLn $ "<svg width=\"" <> show width <> "px\" height=\"" <> show height <> "px\" fill=\"none\" stroke=\"black\">"
-  putStrLn (T.unpack output)
+  putStrLn (T.unpack svgOutput)
   putStrLn "</svg>"
   putStrLn "</body>"
 
