@@ -115,7 +115,7 @@ renderResult RenderingRequest{..} BState{..} = html_ $
            , makeAttribute "stroke" "black"
            , style_ "border: 1px solid black;"
            ] $ toHtmlRaw svgOutput
-      div_ $ do
+      div_ [ style_ "max-width: 50%;" ] $ do
         h2_ "Text output"
         pre_ $ toHtml textOutput
         h2_ "SVG output"
