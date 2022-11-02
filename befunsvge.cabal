@@ -147,6 +147,7 @@ executable befunsvge-server
     , servant-server
     , text
     , warp
+    , zlib
   default-language: Haskell2010
 
 executable svg-test-exe

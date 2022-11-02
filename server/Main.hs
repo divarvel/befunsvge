@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeOperators         #-}
 module Main where
 
+import           Codec.Compression.GZip     (compress, decompress)
 import           Config
 import           Data.Aeson                 (FromJSON, ToJSON, eitherDecode,
                                              encode)
@@ -33,6 +34,8 @@ data RenderingRequestForm
   , _program    :: Text
   } deriving (Generic, FromForm)
 
+newtype Compressed a = Compressed { getCompressed :: a }
+
 data RenderingRequest
   = RenderingRequest
   { config  :: Config
@@ -45,6 +48,12 @@ instance FromHttpApiData RenderingRequest where
     json <- first toText $ B64.decode (encodeUtf8 v)
     let res = eitherDecode (fromStrict json)
     first toText res
+
+instance FromHttpApiData (Compressed RenderingRequest) where
+  parseQueryParam v = do
+    json <- first toText . fmap (decompress . fromStrict) $ B64.decode (encodeUtf8 v)
+    let res = eitherDecode json
+    Compressed <$> first toText res
 
 defaultReq :: RenderingRequest
 defaultReq = RenderingRequest
@@ -65,7 +74,9 @@ defaultReq = RenderingRequest
 
 type MainPage = Html ()
 type API =
-       QueryParam "req" RenderingRequest :> Get '[HTML] MainPage
+       QueryParam "creq" (Compressed RenderingRequest) :>
+       QueryParam "req" RenderingRequest :>
+       Get '[HTML] MainPage
   :<|> ReqBody '[FormUrlEncoded] RenderingRequestForm :> Post '[HTML] NoContent
 
 main :: IO ()
@@ -89,13 +100,18 @@ postHandler RenderingRequestForm{..} = do
 encodeReq :: RenderingRequest -> ByteString
 encodeReq req = B64.encode $ toStrict $ encode req
 
+compressAndEncodeReq :: RenderingRequest -> ByteString
+compressAndEncodeReq req = B64.encode $ toStrict $ compress $ encode req
+
 redirectTo :: RenderingRequest -> Handler a
 redirectTo req = do
-  let encoded = encodeReq req
-  throwError $ err302 { errHeaders = [("Location", "?req=" <> encoded)] }
+  let encoded = compressAndEncodeReq req
+  throwError $ err302 { errHeaders = [("Location", "?creq=" <> encoded)] }
 
-getHander :: Maybe RenderingRequest -> Handler MainPage
-getHander req = do
+getHander :: Maybe (Compressed RenderingRequest) ->
+             Maybe RenderingRequest -> Handler MainPage
+getHander cReq req' = do
+  let req = getCompressed <$> cReq <|> req'
   when (isNothing req) $ redirectTo defaultReq
   let rr@RenderingRequest{..} = fromMaybe defaultReq req
   r@BState{mode} <- liftIO $ compute config program
