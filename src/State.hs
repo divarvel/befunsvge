@@ -218,8 +218,12 @@ handle c = case c of
   'ρ'                 -> popTag "rect" ["width", "height", "x", "y"]
   'ε'                 -> popTag "ellipse" ["rx", "ry", "cx", "cy"]
   -- SVG - path
-  n | n `elem` ("MmLl" :: String) -> popPathCommand (one n) 2
+  n | n `elem` ("Aa" :: String) -> popPathCommand (one n) 7
+  n | n `elem` ("Cc" :: String) -> popPathCommand (one n) 6
+  n | n `elem` ("SsQq" :: String) -> popPathCommand (one n) 4
+  n | n `elem` ("MmLlTt" :: String) -> popPathCommand (one n) 2
   n | n `elem` ("Hh" :: String)   -> popPathCommand (one n) 1
+  n | n `elem` ("Zz" :: String)   -> popPathCommand (one n) 0
   -- v is already taken by the direction operator
   'W'   -> popPathCommand "V" 1
   'w'   -> popPathCommand "v" 1
