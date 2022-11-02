@@ -1,7 +1,9 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Perlin where
 
 import           GHC.Float
 import           Numeric.Noise.Perlin
+import           Relude
 import           System.Random
 
 import           Config

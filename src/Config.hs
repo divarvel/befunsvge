@@ -1,9 +1,11 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Config where
 
 import           Data.Aeson          (FromJSON, ToJSON)
 import           Data.Text           (pack, splitOn, unpack)
 import           Options.Applicative
 import           Options.Generic
+import           Relude
 
 data Config
   = Config

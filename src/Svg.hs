@@ -1,4 +1,7 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Svg where
+
+import           Relude
 
 import           Config
 

@@ -1,7 +1,9 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Main where
 
 import           Config
 import           Perlin
+import           Relude
 import           State
 
 import qualified Data.Text.IO       as T

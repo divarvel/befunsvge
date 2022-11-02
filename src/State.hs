@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module State where
 
 import           Data.Aeson           (FromJSON (..), ToJSON (..))
@@ -9,6 +10,7 @@ import qualified Data.Text            as T
 --import           Data.Text.Encoding.Base64.URL (decodeBase64, encodeBase64)
 import           GHC.Float
 import           Numeric.Noise.Perlin
+import           Relude
 import           System.IO            (hPutStrLn)
 import           System.Random        (StdGen, mkStdGen, random, randomIO)
 

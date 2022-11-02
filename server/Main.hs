@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE NoImplicitPrelude     #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeOperators         #-}
@@ -13,6 +14,7 @@ import qualified Data.Text                  as T
 import           Lucid
 import           Lucid.Base
 import           Network.Wai.Handler.Warp   (runEnv)
+import           Relude
 import           Servant
 import           Servant.HTML.Lucid
 import           State
