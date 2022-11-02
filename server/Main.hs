@@ -108,14 +108,18 @@ renderResult :: RenderingRequest -> BState -> MainPage
 renderResult RenderingRequest{..} BState{..} = html_ $
   body_ $ do
     let Config{height, width} = config
-    svg_ [ height_ (show height)
-         , width_ (show width)
-         , makeAttribute "fill" "none"
-         , makeAttribute "stroke" "black"
-         ]
-         $ toHtmlRaw output
-    p_ $ "Seed " <> show seed
-    renderForm config { seed = Just seed } program
+    div_ [ style_ "width: 100%; display: flex; justify-content: space-around"] $ do
+      svg_ [ height_ (show height)
+           , width_ (show width)
+           , makeAttribute "fill" "none"
+           , makeAttribute "stroke" "black"
+           , style_ "border: 1px solid black;"
+           ] $ toHtmlRaw output
+      pre_ $ toHtml output
+    div_ [ style_ "display: flex; justify-content: space-around; width: 100%;"] $ do
+      div_ [style_ "max-width: 50%;" ] $ do
+        renderForm config { seed = Just seed } program
+      div_ renderHelp
 
 renderForm :: Config -> Board -> MainPage
 renderForm Config{..} b = do
@@ -128,50 +132,127 @@ renderForm Config{..} b = do
       _a = (\PerlinConfig{amp} -> amp) <$> pconf
   form_ [ method_ "POST"
         , action_ "?"
+        , style_ "display: grid; \
+                 \grid-template-areas: \"a a\";\
+                 \grid-template-columns: 1fr 1fr;\
+                 \grid-template-rows: repeat(1fr);"
         ] $ do
-    textarea_ [ name_ "_program"
-              , rows_ (show . max 5 . snd $ size b)
-              , cols_ (show . max 20 . fst $ size b)
-              ] $ toHtml (renderBoard b)
+    div_ [style_ "grid-area: a;" ] $ do
+      h2_ $ do
+        "Input "
+        input_ [ type_ "submit" ]
+      textarea_ [ name_ "_program"
+                , rows_ (show . max 5 . snd $ size b)
+                , cols_ (show . max 20 . fst $ size b)
+                , style_ "width: 100%;"
+                ] $ toHtml (renderBoard b)
+    div_ $ do
+      p_ "Height (px)"
+      input_ [ value_ (show height)
+             , name_ "height"
+             ]
+    div_ $ do
+      p_ "Width (px)"
+      input_ [ value_ (show width)
+             , name_ "width"
+             ]
+    div_ $ do
+      p_ "Max iterations"
+      input_ [ value_ (maybe "1000" show maxIter)
+             , name_ "maxIter"
+             ]
+    div_ $ do
+      p_ "Perlin seed (0 for random)"
+      input_ [ value_ (maybe "0" show seed)
+             , name_ "_seed"
+             ]
+      p_ "Perlin octaves"
+      input_ [ value_ (maybe "5" show _o)
+             , name_ "octaves"
+             ]
+      p_ "Perlin scale"
+      input_ [ value_ (maybe "0.005" show _s)
+             , name_ "scale"
+             ]
+      p_ "Perlin persistence"
+      input_ [ value_ (maybe "0.5" show _p)
+             , name_ "persistence"
+             ]
+      p_ "Perlin amplification"
+      input_ [ value_ (maybe "20" show _a)
+             , name_ "amp"
+             ]
+
+renderHelp :: MainPage
+renderHelp = do
+  h2_ "Befunsvge commands"
+  p_ $ do
+    code_ "< > ^ v"
+    ": Change flow direction"
     br_ []
-    p_ "Height (px)"
-    input_ [ value_ (show height)
-           , name_ "height"
-           ]
+    code_ "#"
+    ": Jump over next cell"
     br_ []
-    p_ "Width (px)"
-    input_ [ value_ (show width)
-           , name_ "width"
-           ]
+    code_ "?"
+    ": Move in a random direction"
     br_ []
-    p_ "Max iterations"
-    input_ [ value_ (maybe "1000" show maxIter)
-           , name_ "maxIter"
-           ]
+    code_ "+ - * / %"
+    ": Pop two values and push the result"
     br_ []
-    p_ "Perlin seed (0 for random)"
-    input_ [ value_ (maybe "0" show seed)
-           , name_ "_seed"
-           ]
+    code_ "`"
+    ": Pop a and b, push 1 if b > a, 0 otherwise"
     br_ []
-    p_ "Perlin octaves"
-    input_ [ value_ (maybe "5" show _o)
-           , name_ "octaves"
-           ]
+    code_ ":"
+    ": Duplicate the stack head"
     br_ []
-    p_ "Perlin scale"
-    input_ [ value_ (maybe "0.005" show _s)
-           , name_ "scale"
-           ]
+    code_ "\\"
+    ": swap the two elements at the front"
     br_ []
-    p_ "Perlin persistence"
-    input_ [ value_ (maybe "0.5" show _p)
-           , name_ "persistence"
-           ]
+    code_ "$"
+    ": pop a stack element"
     br_ []
-    p_ "Perlin amplification"
-    input_ [ value_ (maybe "20" show _a)
-           , name_ "amp"
-           ]
+    code_ "!"
+    ": pop a value, push 1 if the value is 0, 0 otherwise"
     br_ []
-    input_ [ type_ "submit" ]
+    code_ "_"
+    ": pop a value, go right if the value is 0, go left otherwise"
+    br_ []
+    code_ "|"
+    ": pop a value, go down if the value is 0, go up otherwise"
+    br_ []
+    code_ "@"
+    ": stop execution"
+    br_ []
+    code_ "\""
+    ": toggle string mode (push char codepoints between to quotes)"
+    br_ []
+    code_ "p"
+    ": pop coords and value, set the corresponding cell to the value"
+    br_ []
+    code_ "g"
+    ": pop coords, push the corresponding cell value"
+    br_ []
+    code_ "."
+    ": pop a value, display the corresponding number"
+    br_ []
+    code_ "$"
+    ": pop a value, display the corresponding char (codepoint)"
+    br_ []
+    code_ "κ ρ ε"
+    ": pop values, output the corresponding SVG tag "
+    fold ["(", code_ "circle", ", ", code_ "rect", ", ", code_ "ellipse", ")"]
+    br_ []
+    code_ "A a C c S s Q q M m L l T t H h Z z"
+    ": pop values, push the corresponding directive to the current path buffer"
+    br_ []
+    code_ "W w"
+    fold [ ": pop values, push the corresponding directive ("
+         , code_ "V v"
+         , ") to the current path buffer"
+         ]
+    br_ []
+    code_ "π"
+    fold [ ": flush the path buffer, output the corresponding "
+         , code_ "path_"
+         , " directive"
+         ]
