@@ -207,6 +207,7 @@ renderHelp :: MainPage
 renderHelp = do
   h2_ "Befunsvge commands"
   p_ $ do
+    h2_ "Regular befunge-93 commands"
     code_ "< > ^ v"
     ": Change flow direction"
     br_ []
@@ -257,7 +258,7 @@ renderHelp = do
     br_ []
     code_ "$"
     ": pop a value, display the corresponding char (codepoint)"
-    br_ []
+    h2_ "SVG extensions"
     code_ "κ ρ ε"
     ": pop values, output the corresponding SVG tag "
     fold ["(", code_ "circle", ", ", code_ "rect", ", ", code_ "ellipse", ")"]
@@ -276,3 +277,6 @@ renderHelp = do
          , code_ "path_"
          , " directive"
          ]
+    h2_ "External input extension"
+    code_ "i"
+    ": pop x y z coordinates and push f(x,y,z). For now, f is just Perlin noise, with parameters below."
