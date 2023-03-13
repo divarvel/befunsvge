@@ -82,40 +82,37 @@ bin op s@BState{..} = case stack of
 push :: Int -> BState -> BState
 push int s@BState{stack} = s { stack = int : stack }
 
--- should this error on empty stacks?
 pop :: BState -> BState
 pop s@BState{stack} = s { stack = drop 1 stack }
 
--- should this error on empty stacks?
 dup :: BState -> BState
-dup s@BState{stack} = case stack of
+dup s@BState{stack} = case ensureSize 1 stack of
   x:xs -> s { stack = x:x:xs }
-  _    -> stackErr 1 s
+  _    -> error "the impossible has happened"
 
--- should this error on empty stacks?
 sswap :: BState -> BState
-sswap s@BState{stack} = case stack of
+sswap s@BState{stack} = case ensureSize 2 stack of
   x:y:xs -> s { stack = y:x:xs }
-  _      -> stackErr 2 s
+  _      -> error "the impossible has happened"
 
 cond :: Delta -> Delta
      -> BState -> BState
-cond ifNZ ifZ s@BState{stack} = case stack of
+cond ifNZ ifZ s@BState{stack} = case ensureSize 1 stack of
   0:xs -> move ifZ $ s { stack = xs }
   _:xs -> move ifNZ $ s { stack = xs }
-  _    -> stackErr 1 s
+  _    -> error "the impossible has happened"
 
 comp :: BState -> BState
-comp s@BState{stack} = case stack of
+comp s@BState{stack} = case ensureSize 2 stack of
   a:b:xs | b > a     -> s { stack = 1 : xs }
          | otherwise -> s { stack = 0 : xs }
-  _ -> stackErr 2 s
+  _  -> error "the impossible has happened"
 
 nnot :: BState -> BState
-nnot s@BState{stack} = case stack of
+nnot s@BState{stack} = case ensureSize 1 stack of
   0:xs -> s { stack = 1 : xs }
   _:xs -> s { stack = 0 : xs }
-  _    -> stackErr 1 s
+  _    -> error "the impossible has happened"
 
 randomMove :: BState -> BState
 randomMove s@BState{..} =
@@ -139,21 +136,21 @@ inRange Board{size=(mx,my)} x y =
   && y >= 0 && toInteger y < toInteger my
 
 putCell :: BState -> BState
-putCell s@BState{..} = case stack of
+putCell s@BState{..} = case ensureSize 3 stack of
   y:x:v:xs | inRange board x y ->
               s { stack = xs
                 , board = board { grid = insert (toNatural x, toNatural y) (chr v) (grid board) }
                 }
            | otherwise -> err "Cell out of range" s
-  _ -> stackErr 3 s
+  _ -> error "The impossible has happened"
 
 getCell :: BState -> BState
-getCell s@BState{..} = case stack of
+getCell s@BState{..} = case ensureSize 2 stack of
   y:x:xs | inRange board x y ->
              let v = findWithDefault ' ' (toNatural x, toNatural y) (grid board)
              in s { stack = ord v : xs }
          | otherwise -> err "Cell out of range" s
-  _ -> stackErr 2 s
+  _ -> error "The impossible has happened"
 
 toggleStringMode :: BState -> BState
 toggleStringMode s@BState{mode} = case mode of
@@ -162,24 +159,26 @@ toggleStringMode s@BState{mode} = case mode of
   _           -> s
 
 popChar :: BState -> BState
-popChar s@BState{textOutput,stack} = case stack of
+popChar s@BState{textOutput,stack} = case ensureSize 1 stack of
   c:xs -> s { textOutput = textOutput <> one (chr c)
             , stack = xs
             }
-  _ -> stackErr 1 s
+  _ -> error "The impossible has happened"
 
 popNumber :: BState -> BState
-popNumber s@BState{textOutput,stack} = case stack of
+popNumber s@BState{textOutput,stack} = case ensureSize 1 stack of
   n:xs -> s { textOutput = textOutput <> show n
             , stack = xs
             }
-  _ -> stackErr 1 s
+  _ -> error "The impossible has happened"
 
 err :: Text -> BState -> BState
 err e s = s { mode = Error e }
 
-stackErr :: Int -> BState -> BState
-stackErr n = err $ "Expected stack to have at least " <> show n <> " element"
+ensureSize :: Int -> [Int] -> [Int]
+ensureSize size stack' =
+  replicate (size - length stack') 0 <>
+  stack'
 
 handle :: Char -> BState -> BState
 handle c = case c of
@@ -235,9 +234,9 @@ handle c = case c of
   _                   -> id
 
 getInput :: BState -> BState
-getInput s@BState{stack,input} = case stack of
+getInput s@BState{stack,input} = case ensureSize 3 stack of
   z:y:x:xs -> s { stack = input (x,y,z) : xs }
-  _        -> stackErr 3 s
+  _        -> error "The impossible has happened"
 
 run :: Maybe Natural
     -> ((Int, Int, Int) -> Int)
@@ -353,12 +352,13 @@ popTag :: Text
        -> [Text]
        -> BState -> BState
 popTag name attrs s@BState{stack, svgOutput} =
-  let pairs = fmap show <$> zip attrs stack
+  let minSize = length attrs
+      pairs = fmap show <$> zip attrs (ensureSize minSize stack)
    in if length pairs == length attrs
       then s { stack = drop (length pairs) stack
              , svgOutput = svgOutput <> outputTag name pairs
              }
-      else stackErr (length attrs) s
+      else error "The impossible has happened"
 
 outputTag :: Text
           -> [(Text, Text)]
@@ -371,11 +371,10 @@ outputTag name attrs =
 popPathCommand :: Text -> Int
                -> BState -> BState
 popPathCommand name argc s@BState{stack,currentPath} =
-  if argc > length stack
-  then stackErr argc s
-  else s { currentPath = currentPath <> " " <> name <> " " <> T.intercalate " " (show <$> take argc stack)
-         , stack = drop argc stack
-         }
+  let (args, newStack) = splitAt argc $ ensureSize argc newStack
+   in s { currentPath = currentPath <> " " <> name <> " " <> T.intercalate " " (show <$> args)
+        , stack = newStack
+        }
 
 flushPath :: BState -> BState
 flushPath s@BState{currentPath,svgOutput} =
