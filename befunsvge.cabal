@@ -63,6 +63,7 @@ library
     , random
     , relude
     , text
+    , conduit
   default-language: Haskell2010
 
 executable befunsvge-exe
@@ -149,6 +150,28 @@ executable befunsvge-server
     , warp
     , zlib
   default-language: Haskell2010
+
+executable befunsvge-debugger
+  main-is: Main.hs
+  hs-source-dirs:
+      debugger
+  default-extensions:
+    NoImplicitPrelude
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N -with-rtsopts=-T
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , base64-bytestring
+    , befunsvge
+    , conduit
+    , containers
+    , haskell-dap
+    , optparse-applicative
+    , random
+    , relude
+    , text
+    , zlib
+  default-language: GHC2021
 
 executable svg-test-exe
   main-is: Main.hs
