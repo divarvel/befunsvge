@@ -1,9 +1,11 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Lib
-    ( someFunc
-    ) where
 
-import           Relude
+module Lib
+  ( someFunc,
+  )
+where
+
+import Relude
 
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"
